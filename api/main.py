@@ -6,5 +6,5 @@ service = Service()
 
 @app.get("/{name}")
 async def root(name : str,):
-    
-    return service.get(name)
+    result = service.etl(name)
+    return result

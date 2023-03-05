@@ -1,15 +1,26 @@
 import requests
 import pandas as pd
+import numpy as np
+
+from pandas import json_normalize
+import os
+from sqlalchemy import create_engine
+import psycopg2
 
 class Service():
     
     def __init__(self):
-        self.UserOutput = None
+        pass
+    
+    def etl(self, name):
+        """
+        Takes name as a string and sends request to 3 different api and extract data, then transform data.
 
-    def get(self, name):
-        """
         Returns the data for user as a JSON
+
+        Load the data to database
         """
+
         agify_response_list = []
         genderize_response_list = []
         nationalize_response_list = []
@@ -29,17 +40,28 @@ class Service():
         agify_df = pd.DataFrame.from_dict(agify_response_list)
         genderize_df = pd.DataFrame.from_dict(genderize_response_list)
         nationalize_df = pd.DataFrame.from_dict(nationalize_response_list)
-        
-        
 
-
-        print(nationalize_df)
-
-    def post(self):
-        """
-        Save user output to the database
-        """
+        try:           
+            nation = json_normalize(data=nationalize_df['country'].explode().tolist(), meta=['name'], record_prefix='country_')
+        except:
+            return " "
         
+        agify_df = agify_df.drop(["count", "name"], axis=1)
+        genderize_df = genderize_df.drop(["count","name"], axis=1)
 
+        agify_df.set_index("age")
+        genderize_df.set_index("gender")
+        nation.set_index("country_id")
         
-        pass
+        genderize_df.rename(columns={"probability": "gender_probability"}, inplace=True)
+
+        agify_dict = agify_df.to_dict()
+        genderize_dict = genderize_df.to_dict()
+        nationalize_dict = nation.to_dict()
+
+        returner_dict = {}
+        returner_dict.update(agify_dict)
+        returner_dict.update(genderize_dict)
+        returner_dict.update(nationalize_dict)
+
+        return returner_dict
